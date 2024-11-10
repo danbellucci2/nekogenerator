@@ -1,0 +1,258 @@
+<html><head><base href="." />
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neko API Explorer</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #f0f2f5;
+    color: #333;
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .main-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .image-container {
+    width: 100%;
+    height: 350px;  
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 10px 0;
+  }
+
+  .image-container#categoryResult {
+    height: 490px;  
+    margin-top: 0;
+  }
+
+  .image-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    cursor: pointer;
+  }
+
+  .image-container img:hover {
+    opacity: 0.9;
+  }
+
+  button {
+    background: #7c3aed;
+    color: white;
+    border: none;
+    padding: 5.6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.3s;
+  }
+
+  button:hover {
+    background: #6d28d9;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+    margin-bottom: 0;
+  }
+
+  .loader {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #7c3aed;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+    display: none;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .image-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .download-btn {
+    margin-top: 10px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .download-btn:hover {
+    background: #1d4ed8;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Neko API Explorer</h1>
+  
+  <div class="main-container">
+    <div class="card">
+      <h2>Random Neko</h2>
+      <button onclick="getRandomNeko()">Get Random Neko</button>
+      <div class="image-wrapper">
+        <div class="image-container" id="randomNeko">
+          <!-- Image will be loaded here -->
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Random SFW Categories</h2>
+      <div class="grid" id="categories">
+        <!-- Categories buttons will be generated here -->
+      </div>
+      <div class="image-wrapper">
+        <div class="image-container" id="categoryResult">
+          <!-- Category image will be loaded here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="loader" id="loader"></div>
+</div>
+
+<script>
+const BASE_URL = 'https://nekos.best/api/v2';
+const categories = [
+  'bite', 'blush', 'bored', 'cry', 'cuddle', 'dance', 'facepalm',
+  'feed', 'happy', 'highfive', 'hug', 'kiss', 'laugh', 'pat',
+  'poke', 'pout', 'punch', 'slap', 'sleep', 'smile', 'smug',
+  'stare', 'think', 'thumbsup', 'tickle', 'wave', 'wink'
+];
+
+async function downloadImage(url) {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const filename = url.split('/').pop();
+    
+    const link = document.createElement('a');
+    link.href = window.URL.createObjectURL(blob);
+    link.download = filename;
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(link.href);
+  } catch (error) {
+    console.error('Error downloading image:', error);
+    // Fallback to opening in new tab if download fails
+    window.open(url, '_blank');
+  }
+}
+
+const categoriesContainer = document.getElementById('categories');
+categories.forEach(category => {
+  const button = document.createElement('button');
+  button.textContent = category.charAt(0).toUpperCase() + category.slice(1);
+  button.onclick = () => getCategoryImage(category);
+  categoriesContainer.appendChild(button);
+});
+
+async function getRandomNeko() {
+  showLoader();
+  try {
+    const response = await fetch(`${BASE_URL}/neko`);
+    const data = await response.json();
+    if (data.results && data.results[0].url) {
+      const container = document.getElementById('randomNeko');
+      const imageUrl = data.results[0].url;
+      container.innerHTML = `
+        <img src="${imageUrl}" alt="Random neko image" loading="lazy" onclick="downloadImage('${imageUrl}')">`;
+      const wrapper = container.closest('.image-wrapper');
+      const downloadBtn = document.createElement('button');
+      downloadBtn.className = 'download-btn';
+      downloadBtn.onclick = () => downloadImage(imageUrl);
+      downloadBtn.innerHTML = `
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+        </svg>
+        Download
+      `;
+      wrapper.querySelector('.download-btn')?.remove();
+      wrapper.appendChild(downloadBtn);
+    }
+  } catch (error) {
+    console.error('Error fetching random neko:', error);
+  }
+  hideLoader();
+}
+
+async function getCategoryImage(category) {
+  showLoader();
+  try {
+    const response = await fetch(`${BASE_URL}/${category}`);
+    const data = await response.json();
+    if (data.results && data.results[0].url) {
+      const container = document.getElementById('categoryResult');
+      const imageUrl = data.results[0].url;
+      container.innerHTML = `
+        <img src="${imageUrl}" alt="${category} category image" loading="lazy" onclick="downloadImage('${imageUrl}')">`;
+      const wrapper = container.closest('.image-wrapper');
+      const downloadBtn = document.createElement('button');
+      downloadBtn.className = 'download-btn';
+      downloadBtn.onclick = () => downloadImage(imageUrl);
+      downloadBtn.innerHTML = `
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+        </svg>
+        Download
+      `;
+      wrapper.querySelector('.download-btn')?.remove();
+      wrapper.appendChild(downloadBtn);
+    }
+  } catch (error) {
+    console.error('Error fetching category image:', error);
+  }
+  hideLoader();
+}
+
+function showLoader() {
+  document.getElementById('loader').style.display = 'block';
+}
+
+function hideLoader() {
+  document.getElementById('loader').style.display = 'none';
+}
+
+// Load initial random neko on page load
+getRandomNeko();
+</script>
+</body></html>
